@@ -5,7 +5,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from accounts.api.V1.serializer import (
     ResendEmailSerializer,
 )              
-from accounts.api.V1.multi_threading import SendEmailWithThreading
+from accounts.api.V1.celery_task import SendEmailWithCelery
 
 class ResendEmailView(GenericAPIView):
     serializer_class = ResendEmailSerializer
@@ -17,14 +17,12 @@ class ResendEmailView(GenericAPIView):
         if user.is_verified:
             return Response({"detail": "your email is already verified"})
         token = self.get_tokens_for_user(user)
-        message = EmailMessage(
+        SendEmailWithCelery.delay(
             "email/email.html",
-            {"token": token},
-            "negim@gmail.com",
-            to=[serializer.validated_data["email"]],
-        )
-        email = SendEmailWithThreading(message)
-        email.start()
+            token,
+            "sobhan@gmail.com",
+             [user.email]
+             )
         return Response({"detail": "email Resend for you..."})
 
     def get_tokens_for_user(self, user):

@@ -8,8 +8,8 @@ from accounts.api.V1.serializer import (
     ResetPasswordEmailSerializer,
     ResetPasswordSerializer
 )              
-from accounts.api.V1.multi_threading import SendEmailWithThreading
 
+from accounts.api.V1.celery_task import SendEmailWithCelery
 
 class ResetPasswordEmailView(GenericAPIView):
     serializer_class = ResetPasswordEmailSerializer
@@ -19,14 +19,12 @@ class ResetPasswordEmailView(GenericAPIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data["user"]
         token = self.get_tokens_for_user(user)
-        message = EmailMessage(
-            "email/resetemail.html",
-            {"token": token},
-            "negin@gmail.com",
-            to=[serializer.validated_data["email"]],
-        )
-        email = SendEmailWithThreading(message)
-        email.start()
+        SendEmailWithCelery.delay(
+            "email/email.html",
+            token,
+            "sobhan@gmail.com",
+             [user.email]
+             )
         return Response({"detail": "email Resend for you..."})
 
     def get_tokens_for_user(self, user):
